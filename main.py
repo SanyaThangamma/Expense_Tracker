@@ -3,6 +3,8 @@ from tkinter import ttk, messagebox
 import sqlite3
 import pandas as pd
 import matplotlib.pyplot as plt
+from sklearn.linear_model import LinearRegression
+import numpy as np
 
 # Database Setup
 conn = sqlite3.connect("expenses.db")
@@ -76,12 +78,35 @@ def show_statistics():
     plt.xticks(rotation=45)
     plt.show()
 
+# 📌 **Prediction Function**
+def predict_future_expense():
+    cursor.execute("SELECT id, amount FROM expenses ORDER BY id")
+    data = cursor.fetchall()
+
+    if len(data) < 2:  # Not enough data for prediction
+        messagebox.showerror("Error", "Not enough data to predict future expenses!")
+        return
+    
+    df = pd.DataFrame(data, columns=["ID", "Amount"])
+    
+    # Reshape data for Linear Regression
+    X = np.array(df["ID"]).reshape(-1, 1)  # Independent variable (time)
+    y = np.array(df["Amount"]).reshape(-1, 1)  # Dependent variable (expense)
+
+    model = LinearRegression()
+    model.fit(X, y)
+
+    future_id = max(df["ID"]) + 1  # Predict the next expense ID
+    predicted_expense = model.predict([[future_id]])[0][0]
+
+    messagebox.showinfo("Prediction", f"Predicted Future Expense: ₹{predicted_expense:.2f}")
+
 # GUI Setup
 root = tk.Tk()
 root.title("Expense Tracker")
-root.geometry("600x500")
+root.geometry("600x550")
 
-# Layout Configuration (Fix for entry fields not appearing)
+# Layout Configuration
 root.columnconfigure(1, weight=1)
 
 # Labels and Entries
@@ -104,21 +129,21 @@ date_entry.grid(row=3, column=1, padx=10, pady=5, sticky="ew")
 # Buttons
 tk.Button(root, text="Add Expense", command=add_expense, bg="green", fg="white").grid(row=4, column=0, columnspan=2, pady=10)
 tk.Button(root, text="Show Statistics", command=show_statistics, bg="blue", fg="white").grid(row=5, column=0, columnspan=2, pady=5)
-tk.Button(root, text="Delete Expense", command=delete_expense, bg="red", fg="white").grid(row=7, column=0, columnspan=2, pady=10)
+tk.Button(root, text="Predict Future Expense", command=predict_future_expense, bg="purple", fg="white").grid(row=6, column=0, columnspan=2, pady=5)
+tk.Button(root, text="Delete Expense", command=delete_expense, bg="red", fg="white").grid(row=8, column=0, columnspan=2, pady=10)
+
 # Table (Treeview)
 columns = ("ID", "Description", "Amount", "Category", "Date")
 tree = ttk.Treeview(root, columns=columns, show="headings")
 for col in columns:
     tree.heading(col, text=col)
     tree.column(col, anchor="center", width=100)
-tree.grid(row=6, column=0, columnspan=2, pady=10, sticky="ew")
+tree.grid(row=7, column=0, columnspan=2, pady=10, sticky="ew")
 
 # Scrollbar for Treeview
 scrollbar = ttk.Scrollbar(root, orient="vertical", command=tree.yview)
 tree.configure(yscroll=scrollbar.set)
-scrollbar.grid(row=6, column=2, sticky="ns")
-
-
+scrollbar.grid(row=7, column=2, sticky="ns")
 
 # Load Expenses
 load_expenses()
